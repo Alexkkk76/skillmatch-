@@ -6,10 +6,11 @@ SkillMatch - 技能 × 需求自动匹配工具
 找到「我能做、有人要」的产品方向。
 
 用法示例：
+  python main.py                                   # 交互模式
   python main.py -s "Python,爬虫,数据可视化"
   python main.py -s "UI设计,Figma,交互设计" --top 5
   python main.py -s "Python,机器学习" --export results.md
-  python main.py -s "Python" --sources v2ex         # 只搜 V2EX
+  python main.py -s "Python" --sources v2ex        # 只搜 V2EX
 """
 
 import sys
@@ -20,7 +21,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.text import Text
+from rich.prompt import Prompt, Confirm
 
 from fetchers.v2ex import fetch_v2ex_posts
 from fetchers.sspai import fetch_sspai_posts
@@ -31,12 +32,56 @@ from matcher import SkillMatcher
 
 console = Console()
 
+ALL_SOURCES = "v2ex,sspai,reddit,hn,zhihu"
+
+
+def _interactive_prompt() -> tuple[list[str], int, str, str | None]:
+    """交互模式：引导用户逐步输入参数，返回 (skills, top, sources, export)"""
+    console.print()
+    console.rule("[bold cyan]⚡ SkillMatch 技能需求匹配[/bold cyan]")
+    console.print(
+        "\n[bold]欢迎使用 SkillMatch！[/bold]\n"
+        "我会帮你从社区讨论中找到与你技能匹配的产品方向。\n"
+    )
+
+    # 1. 输入技能
+    while True:
+        raw = Prompt.ask(
+            "🎯 [bold]请输入你的技能[/bold]（多个技能用逗号分隔）\n"
+            "   例如：Python,爬虫,数据可视化  /  UI设计,Figma  /  视频剪辑,After Effects"
+        )
+        skills = [s.strip() for s in raw.split(",") if s.strip()]
+        if skills:
+            break
+        console.print("[red]  请至少输入一个技能[/red]")
+
+    # 2. 返回数量
+    top_raw = Prompt.ask("\n📊 [bold]最多返回几条结果？[/bold]", default="10")
+    try:
+        top = max(1, min(50, int(top_raw)))
+    except ValueError:
+        top = 10
+
+    # 3. 数据源
+    console.print("\n📡 [bold]选择数据源[/bold]（默认全选）")
+    console.print("   可选：v2ex（中文开发者）, sspai（少数派）, reddit（英文）, hn（HN）, zhihu（知乎）")
+    sources_raw = Prompt.ask("   直接回车全选，或输入想要的数据源", default=ALL_SOURCES)
+    sources = sources_raw.strip() or ALL_SOURCES
+
+    # 4. 是否导出
+    export = None
+    if Confirm.ask("\n💾 [bold]是否将结果导出到 Markdown 文件？[/bold]", default=False):
+        export = Prompt.ask("   文件名", default="results.md")
+
+    console.print()
+    return skills, top, sources, export
+
 
 @click.command()
 @click.option(
     "--skills", "-s",
-    required=True,
-    help="你的技能，用逗号分隔。例如：Python,爬虫,数据可视化",
+    default=None,
+    help="你的技能，用逗号分隔。例如：Python,爬虫,数据可视化（不填则进入交互模式）",
 )
 @click.option(
     "--top", "-n",
@@ -46,7 +91,7 @@ console = Console()
 )
 @click.option(
     "--sources",
-    default="v2ex,sspai,reddit,hn,zhihu",
+    default=ALL_SOURCES,
     show_default=True,
     help="数据来源，逗号分隔（可选值：v2ex, sspai, reddit, hn, zhihu）",
 )
@@ -56,15 +101,22 @@ console = Console()
     default=None,
     help="导出结果到 Markdown 文件，例如：--export results.md",
 )
-def main(skills: str, top: int, sources: str, export: str | None):
-    """SkillMatch：输入技能，发现匹配的产品方向"""
+def main(skills: str | None, top: int, sources: str, export: str | None):
+    """SkillMatch：输入技能，发现匹配的产品方向。不带参数直接运行进入交互模式。"""
 
-    skill_list = [s.strip() for s in skills.split(",") if s.strip()]
+    # 没有传 -s 时进入交互模式
+    if not skills:
+        skills_list, top, sources, export = _interactive_prompt()
+    else:
+        skills_list = [s.strip() for s in skills.split(",") if s.strip()]
+
+    skill_list = skills_list
     source_list = [s.strip().lower() for s in sources.split(",") if s.strip()]
 
-    # ── 标题 ──────────────────────────────────────────────────────
-    console.print()
-    console.rule("[bold cyan]⚡ SkillMatch 技能需求匹配[/bold cyan]")
+    # ── 标题（非交互模式才打印，交互模式已在 prompt 里打印过了）──────
+    if skills:
+        console.print()
+        console.rule("[bold cyan]⚡ SkillMatch 技能需求匹配[/bold cyan]")
     console.print(
         Panel(
             f"🎯 [bold]技能：[/bold]{' · '.join(skill_list)}\n"
