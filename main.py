@@ -76,7 +76,7 @@ def _interactive_prompt() -> tuple[list[str], int, str, str | None]:
 
     # ── 2. 返回数量 ───────────────────────────────────────────────
     while True:
-        raw_n = Prompt.ask("\n📊 [bold]返回结果数量[/bold]（1-10）", default="10")
+        raw_n = Prompt.ask("\n📊 [bold]返回结果数量[/bold]（1-10）", default="5")
         try:
             top = int(raw_n)
             if 1 <= top <= 10:
