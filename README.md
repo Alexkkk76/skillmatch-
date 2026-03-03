@@ -24,6 +24,16 @@ pip install -r requirements.txt
 
 ### 3. 运行
 
+**交互模式**（推荐新手）：
+
+```bash
+python main.py
+```
+
+直接运行，按提示逐步输入技能、结果数量、数据源。
+
+**命令行模式**：
+
 ```bash
 # 基础用法
 python main.py -s "Python,爬虫,数据可视化"
