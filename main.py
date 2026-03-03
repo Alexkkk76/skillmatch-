@@ -75,25 +75,15 @@ def _interactive_prompt() -> tuple[list[str], int, str, str | None]:
         console.print("[red]   请至少输入一个技能[/red]")
 
     # ── 2. 返回数量 ───────────────────────────────────────────────
-    console.print("\n📊 [bold]返回结果数量[/bold]\n")
-    console.print("   [cyan]1[/cyan]. 5 条  — 快速浏览")
-    console.print("   [cyan]2[/cyan]. 10 条 — 默认（推荐）")
-    console.print("   [cyan]3[/cyan]. 20 条 — 深度挖掘")
-    console.print("   [cyan]4[/cyan]. 自定义数量\n")
-
-    top_sel = Prompt.ask("   选择编号", default="2").strip()
-    if top_sel == "1":
-        top = 5
-    elif top_sel == "2":
-        top = 10
-    elif top_sel == "3":
-        top = 20
-    else:
-        raw_n = Prompt.ask("   输入数量", default="10")
+    while True:
+        raw_n = Prompt.ask("\n📊 [bold]返回结果数量[/bold]（1-10）", default="10")
         try:
-            top = max(1, min(50, int(raw_n)))
+            top = int(raw_n)
+            if 1 <= top <= 10:
+                break
+            console.print("[red]   请输入 1 到 10 之间的数字[/red]")
         except ValueError:
-            top = 10
+            console.print("[red]   请输入一个数字[/red]")
 
     # ── 3. 数据源（逐条勾选） ─────────────────────────────────────
     console.print("\n📡 [bold]选择搜索的数据源[/bold]（直接回车 = 全选）\n")
