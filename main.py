@@ -34,6 +34,23 @@ console = Console()
 
 ALL_SOURCES = "v2ex,sspai,reddit,hn,zhihu"
 
+# 技能示例，按类别分组展示
+SKILL_EXAMPLES = {
+    "💻 开发": ["Python", "JavaScript", "Go", "爬虫", "数据分析", "机器学习", "iOS开发", "Android开发"],
+    "🎨 设计": ["UI设计", "Figma", "插画", "平面设计", "3D建模", "动效设计"],
+    "🎬 内容": ["视频剪辑", "After Effects", "写作", "摄影", "播客"],
+    "📊 其他": ["Excel", "数据可视化", "英语翻译", "SEO", "运营", "自动化"],
+}
+
+# 数据源列表，供交互模式逐条展示
+SOURCE_OPTIONS = [
+    ("v2ex",   "V2EX  ", "中文独立开发者社区"),
+    ("sspai",  "少数派 ", "效率工具与数字生活"),
+    ("reddit", "Reddit", "英文独立开发者社区"),
+    ("hn",     "HN    ", "Hacker News"),
+    ("zhihu",  "知乎  ", "中文问答社区"),
+]
+
 
 def _interactive_prompt() -> tuple[list[str], int, str, str | None]:
     """交互模式：引导用户逐步输入参数，返回 (skills, top, sources, export)"""
@@ -44,31 +61,50 @@ def _interactive_prompt() -> tuple[list[str], int, str, str | None]:
         "我会帮你从社区讨论中找到与你技能匹配的产品方向。\n"
     )
 
-    # 1. 输入技能
+    # ── 1. 技能输入（附示例） ─────────────────────────────────────
+    console.print("🎯 [bold]你有哪些技能？[/bold]\n")
+    for category, examples in SKILL_EXAMPLES.items():
+        console.print(f"   {category}：[dim]{' · '.join(examples)}[/dim]")
+
+    console.print()
     while True:
-        raw = Prompt.ask(
-            "🎯 [bold]请输入你的技能[/bold]（多个技能用逗号分隔）\n"
-            "   例如：Python,爬虫,数据可视化  /  UI设计,Figma  /  视频剪辑,After Effects"
-        )
+        raw = Prompt.ask("   输入你的技能（逗号分隔，例如：Python,爬虫）")
         skills = [s.strip() for s in raw.split(",") if s.strip()]
         if skills:
             break
-        console.print("[red]  请至少输入一个技能[/red]")
+        console.print("[red]   请至少输入一个技能[/red]")
 
-    # 2. 返回数量
+    # ── 2. 返回数量 ───────────────────────────────────────────────
     top_raw = Prompt.ask("\n📊 [bold]最多返回几条结果？[/bold]", default="10")
     try:
         top = max(1, min(50, int(top_raw)))
     except ValueError:
         top = 10
 
-    # 3. 数据源
-    console.print("\n📡 [bold]选择数据源[/bold]（默认全选）")
-    console.print("   可选：v2ex（中文开发者）, sspai（少数派）, reddit（英文）, hn（HN）, zhihu（知乎）")
-    sources_raw = Prompt.ask("   直接回车全选，或输入想要的数据源", default=ALL_SOURCES)
-    sources = sources_raw.strip() or ALL_SOURCES
+    # ── 3. 数据源（逐条勾选） ─────────────────────────────────────
+    console.print("\n📡 [bold]选择搜索的数据源[/bold]（直接回车 = 全选）\n")
+    for i, (_, label, desc) in enumerate(SOURCE_OPTIONS, 1):
+        console.print(f"   [cyan]{i}[/cyan]. {label} — {desc}")
 
-    # 4. 是否导出
+    console.print()
+    raw_sel = Prompt.ask(
+        "   输入编号选择（如 [cyan]1,3,5[/cyan]），直接回车全选",
+        default="",
+    ).strip()
+
+    if not raw_sel:
+        sources = ALL_SOURCES
+    else:
+        selected = []
+        for part in raw_sel.split(","):
+            part = part.strip()
+            if part.isdigit():
+                idx = int(part) - 1
+                if 0 <= idx < len(SOURCE_OPTIONS):
+                    selected.append(SOURCE_OPTIONS[idx][0])
+        sources = ",".join(selected) if selected else ALL_SOURCES
+
+    # ── 4. 导出 ───────────────────────────────────────────────────
     export = None
     if Confirm.ask("\n💾 [bold]是否将结果导出到 Markdown 文件？[/bold]", default=False):
         export = Prompt.ask("   文件名", default="results.md")
